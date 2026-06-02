@@ -1,262 +1,551 @@
-![Banner image](https://user-images.githubusercontent.com/10284570/173569848-c624317f-42b1-45a6-ab09-f0ea3c247648.png)
+# 🚀 n8n Custom Nodes — Deploy em VPS do Zero
 
-# n8n-nodes-starter
+Tutorial completo: da VPS virgem até rodar e publicar nodes personalizados no n8n com Docker.
 
-This starter repository helps you build custom integrations for [n8n](https://n8n.io). It includes example nodes, credentials, the node linter, and all the tooling you need to get started.
+---
 
-## Quick Start
+## 📋 Índice
 
-> [!TIP]
-> **New to building n8n nodes?** The fastest way to get started is with `npm create @n8n/node`. This command scaffolds a complete node package for you using the [@n8n/node-cli](https://www.npmjs.com/package/@n8n/node-cli).
+1. [Pré-requisitos](#1-pré-requisitos)
+2. [Configuração inicial da VPS](#2-configuração-inicial-da-vps)
+3. [Instalação do Docker](#3-instalação-do-docker)
+4. [Instalação do Node.js e pnpm](#4-instalação-do-nodejs-e-pnpm)
+5. [Clone dos repositórios](#5-clone-dos-repositórios)
+6. [Configuração do n8n (n8n-latest-pure)](#6-configuração-do-n8n-n8n-latest-pure)
+7. [Ajuste do docker-compose.yml](#7-ajuste-do-docker-composeyml)
+8. [Subir o n8n](#8-subir-o-n8n)
+9. [Estrutura do repositório de nodes](#9-estrutura-do-repositório-de-nodes)
+10. [O script deploy.sh](#10-o-script-deploysh)
+11. [Fluxo de desenvolvimento](#11-fluxo-de-desenvolvimento)
+12. [Verificação e troubleshooting](#12-verificação-e-troubleshooting)
 
-**To create a new node package from scratch:**
+---
 
-```bash
-npm create @n8n/node
-```
+## 1. Pré-requisitos
 
-**Already using this starter? Start developing with:**
+### Na sua máquina local
+- Git instalado
+- Acesso SSH à VPS (chave ou senha)
+- Forks dos repositórios no GitHub:
+  - `seu-user/n8n-latest-pure` — infraestrutura do n8n
+  - `seu-user/n8n-nodes-starter-with-deploy` — template para criar nodes
 
-```bash
-npm run dev
-```
+### Na VPS
+- Ubuntu 22.04 LTS ou superior
+- Mínimo 1 GB RAM (recomendado 2 GB)
+- Acesso root ou sudo
 
-This starts n8n with your nodes loaded and hot reload enabled.
+---
 
-## What's Included
+## 2. Configuração inicial da VPS
 
-This starter repository includes two example nodes to learn from:
+Conecte via SSH e execute os passos abaixo.
 
-- **[Example Node](nodes/Example/)** - A simple starter node that shows the basic structure with a custom `execute` method
-- **[GitHub Issues Node](nodes/GithubIssues/)** - A complete, production-ready example built using the **declarative style**:
-  - **Low-code approach** - Define operations declaratively without writing request logic
-  - Multiple resources (Issues, Comments)
-  - Multiple operations (Get, Get All, Create)
-  - Two authentication methods (OAuth2 and Personal Access Token)
-  - List search functionality for dynamic dropdowns
-  - Proper error handling and typing
-  - Ideal for HTTP API-based integrations
-
-> [!TIP]
-> The declarative/low-code style (used in GitHub Issues) is the recommended approach for building nodes that interact with HTTP APIs. It significantly reduces boilerplate code and handles requests automatically.
-
-Browse these examples to understand both approaches, then modify them or create your own.
-
-## Finding Inspiration
-
-Looking for more examples? Check out these resources:
-
-- **[npm Community Nodes](https://www.npmjs.com/search?q=keywords:n8n-community-node-package)** - Browse thousands of community-built nodes on npm using the `n8n-community-node-package` tag
-- **[n8n Built-in Nodes](https://github.com/n8n-io/n8n/tree/master/packages/nodes-base/nodes)** - Study the source code of n8n's official nodes for production-ready patterns and best practices
-- **[n8n Credentials](https://github.com/n8n-io/n8n/tree/master/packages/nodes-base/credentials)** - See how authentication is implemented for various services
-
-These are excellent resources to understand how to structure your nodes, handle different API patterns, and implement advanced features.
-
-## Prerequisites
-
-Before you begin, install the following on your development machine:
-
-### Required
-
-- **[Node.js](https://nodejs.org/)** (v22 or higher) and npm
-  - Linux/Mac/WSL: Install via [nvm](https://github.com/nvm-sh/nvm)
-  - Windows: Follow [Microsoft's NodeJS guide](https://learn.microsoft.com/en-us/windows/dev-environment/javascript/nodejs-on-windows)
-- **[git](https://git-scm.com/downloads)**
-
-### Recommended
-
-- Follow n8n's [development environment setup guide](https://docs.n8n.io/integrations/creating-nodes/build/node-development-environment/)
-
-> [!NOTE]
-> The `@n8n/node-cli` is included as a dev dependency and will be installed automatically when you run `npm install`. The CLI includes n8n for local development, so you don't need to install n8n globally.
-
-## Getting Started with this Starter
-
-Follow these steps to create your own n8n community node package:
-
-### 1. Create Your Repository
-
-[Generate a new repository](https://github.com/n8n-io/n8n-nodes-starter/generate) from this template, then clone it:
+### Atualizar o sistema
 
 ```bash
-git clone https://github.com/<your-organization>/<your-repo-name>.git
-cd <your-repo-name>
+sudo apt update && sudo apt upgrade -y
 ```
 
-### 2. Install Dependencies
+### Instalar dependências essenciais
 
 ```bash
-npm install
+sudo apt install -y \
+  curl \
+  wget \
+  git \
+  unzip \
+  ca-certificates \
+  gnupg \
+  lsb-release \
+  build-essential
 ```
 
-This installs all required dependencies including the `@n8n/node-cli`.
+### Criar usuário de deploy (opcional mas recomendado)
 
-### 3. Explore the Examples
-
-Browse the example nodes in [nodes/](nodes/) and [credentials/](credentials/) to understand the structure:
-
-- Start with [nodes/Example/](nodes/Example/) for a basic node
-- Study [nodes/GithubIssues/](nodes/GithubIssues/) for a real-world implementation
-
-### 4. Build Your Node
-
-Edit the example nodes to fit your use case, or create new node files by copying the structure from [nodes/Example/](nodes/Example/).
-
-> [!TIP]
-> If you want to scaffold a completely new node package, use `npm create @n8n/node` to start fresh with the CLI's interactive generator.
-
-### 5. Configure Your Package
-
-Update `package.json` with your details:
-
-- `name` - Your package name (must start with `n8n-nodes-`)
-- `author` - Your name and email
-- `repository` - Your repository URL
-- `description` - What your node does
-
-Make sure your node is registered in the `n8n.nodes` array.
-
-### 6. Develop and Test Locally
-
-Start n8n with your node loaded:
+Se estiver logado como `root`, crie um usuário dedicado:
 
 ```bash
-npm run dev
+adduser deploy
+usermod -aG sudo deploy
+su - deploy
 ```
 
-This command runs `n8n-node dev` which:
+---
 
-- Builds your node with watch mode
-- Starts n8n with your node available
-- Automatically rebuilds when you make changes
-- Opens n8n in your browser (usually http://localhost:5678)
+## 3. Instalação do Docker
 
-You can now test your node in n8n workflows!
-
-> [!NOTE]
-> Learn more about CLI commands in the [@n8n/node-cli documentation](https://www.npmjs.com/package/@n8n/node-cli).
-
-### 7. Lint Your Code
-
-Check for errors:
+### Adicionar repositório oficial do Docker
 
 ```bash
-npm run lint
+# Chave GPG
+sudo install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | \
+  sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+sudo chmod a+r /etc/apt/keyrings/docker.gpg
+
+# Repositório
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
+  https://download.docker.com/linux/ubuntu \
+  $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+sudo apt update
 ```
 
-Auto-fix issues when possible:
+### Instalar Docker Engine e Compose
 
 ```bash
-npm run lint:fix
+sudo apt install -y \
+  docker-ce \
+  docker-ce-cli \
+  containerd.io \
+  docker-buildx-plugin \
+  docker-compose-plugin
 ```
 
-### 8. Build for Production
-
-When ready to publish:
+### Adicionar seu usuário ao grupo docker
 
 ```bash
-npm run build
+sudo usermod -aG docker $USER
+newgrp docker
 ```
 
-This compiles your TypeScript code to the `dist/` folder.
-
-### 9. Prepare for Publishing
-
-Before publishing:
-
-1. **Update documentation**: Replace this README with your node's documentation. Use [README_TEMPLATE.md](README_TEMPLATE.md) as a starting point.
-2. **Update the LICENSE**: Add your details to the [LICENSE](LICENSE.md) file.
-3. **Test thoroughly**: Ensure your node works in different scenarios.
-
-### 10. Publish to npm
-
-Publishing is handled automatically by the included GitHub Actions workflow ([.github/workflows/publish.yml](.github/workflows/publish.yml)). It runs on every version tag push and publishes to npm with a provenance attestation — a requirement for n8n community nodes starting May 1, 2026.
-
-#### One-time setup
-
-Configure npm to trust this repository's GitHub Actions workflow so it can publish on your behalf. Log in to [npmjs.com](https://npmjs.com), open your package settings, and under **Publish access → Trusted Publishers** add a publisher with:
-
-- **Repository owner**: your GitHub username or org
-- **Repository name**: your repo name
-- **Workflow name**: `publish.yml`
-
-No token or secret needs to be stored in GitHub — the workflow uses GitHub's OIDC token instead.
-
-> [!NOTE]
-> If you prefer a traditional npm token, create a Granular Access Token on npmjs.com and store it as `NPM_TOKEN` in your repository's Actions secrets. See the comments at the top of `.github/workflows/publish.yml` for details.
-
-#### Releasing a new version
+### Verificar instalação
 
 ```bash
-npm run release
+docker --version
+docker compose version
 ```
 
-This lints, builds, prompts for a version bump, updates the changelog, commits, tags, and pushes — which triggers the workflow to publish to npm.
+Saída esperada:
+```
+Docker version 26.x.x, build ...
+Docker Compose version v2.x.x
+```
 
-### 11. Submit for Verification (Optional)
+---
 
-Get your node verified for n8n Cloud:
+## 4. Instalação do Node.js e pnpm
 
-1. Ensure your node meets the [requirements](https://docs.n8n.io/integrations/creating-nodes/deploy/submit-community-nodes/):
-   - Uses MIT license ✅ (included in this starter)
-   - No external package dependencies
-   - Follows n8n's design guidelines
-   - Passes quality and security review
+O Node.js é necessário para buildar os nodes localmente (na VPS ou na sua máquina, dependendo do seu fluxo).
 
-2. Submit through the [n8n Creator Portal](https://creators.n8n.io/nodes)
+### Instalar Node.js via nvm (recomendado)
 
-**Benefits of verification:**
+```bash
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
 
-- Available directly in n8n Cloud
-- Discoverable in the n8n nodes panel
-- Verified badge for quality assurance
-- Increased visibility in the n8n community
+# Recarregar o shell
+source ~/.bashrc
 
-## Available Scripts
+# Instalar Node.js LTS
+nvm install --lts
+nvm use --lts
+```
 
-This starter includes several npm scripts to streamline development:
+### Verificar
 
-| Script                | Description                                                                 |
-| --------------------- | --------------------------------------------------------------------------- |
-| `npm run dev`         | Start n8n with your node and watch for changes (runs `n8n-node dev`)        |
-| `npm run build`       | Compile TypeScript to JavaScript for production (runs `n8n-node build`)     |
-| `npm run build:watch` | Build in watch mode (auto-rebuild on changes)                               |
-| `npm run lint`        | Check your code for errors and style issues (runs `n8n-node lint`)          |
-| `npm run lint:fix`    | Automatically fix linting issues when possible (runs `n8n-node lint --fix`) |
-| `npm run release`     | Create a new release (runs `n8n-node release`)                              |
+```bash
+node --version   # v22.x.x ou superior
+npm --version
+```
 
-> [!TIP]
-> These scripts use the [@n8n/node-cli](https://www.npmjs.com/package/@n8n/node-cli) under the hood. You can also run CLI commands directly, e.g., `npx n8n-node dev`.
+### Instalar pnpm
 
-## Troubleshooting
+```bash
+npm install -g pnpm
+pnpm --version
+```
 
-### My node doesn't appear in n8n
+---
 
-1. Make sure you ran `npm install` to install dependencies
-2. Check that your node is listed in `package.json` under `n8n.nodes`
-3. Restart the dev server with `npm run dev`
-4. Check the console for any error messages
+## 5. Clone dos repositórios
 
-### Linting errors
+```bash
+cd ~
 
-Run `npm run lint:fix` to automatically fix most common issues. For remaining errors, check the [n8n node development guidelines](https://docs.n8n.io/integrations/creating-nodes/).
+# Repositório da infraestrutura n8n
+git clone https://github.com/henrysssilveira/n8n-latest-pure.git
 
-### TypeScript errors
+# Repositório do template de nodes
+git clone https://github.com/henrysssilveira/n8n-nodes-starter-with-deploy.git
+```
 
-Make sure you're using Node.js v22 or higher and have run `npm install` to get all type definitions.
+> **Substitua `seu-user` pelo seu usuário do GitHub.**
 
-## Resources
+---
 
-- **[n8n Node Documentation](https://docs.n8n.io/integrations/creating-nodes/)** - Complete guide to building nodes
-- **[n8n Community Forum](https://community.n8n.io/)** - Get help and share your nodes
-- **[@n8n/node-cli Documentation](https://www.npmjs.com/package/@n8n/node-cli)** - CLI tool reference
-- **[n8n Creator Portal](https://creators.n8n.io/nodes)** - Submit your node for verification
-- **[Submit Community Nodes Guide](https://docs.n8n.io/integrations/creating-nodes/deploy/submit-community-nodes/)** - Verification requirements and process
+## 6. Configuração do n8n (n8n-latest-pure)
 
-## Contributing
+```bash
+cd ~/n8n-latest-pure
+```
 
-Have suggestions for improving this starter? [Open an issue](https://github.com/n8n-io/n8n-nodes-starter/issues) or submit a pull request!
+### Criar o arquivo .env
 
-## License
+```bash
+cp .env.example .env
+nano .env
+```
 
-[MIT](https://github.com/n8n-io/n8n-nodes-starter/blob/master/LICENSE.md)
+Preencha as variáveis:
+
+```env
+POSTGRES_USER=n8n_user
+POSTGRES_PASSWORD=uma_senha_forte_aqui
+POSTGRES_DB=n8n_db
+
+N8N_ENCRYPTION_KEY=gere_uma_chave_aleatoria_aqui
+N8N_USER_MANAGEMENT_JWT_SECRET=outro_valor_aleatorio_aqui
+
+N8N_PORT=5678
+```
+
+> **Dica para gerar chaves seguras:**
+> ```bash
+> openssl rand -hex 32
+> ```
+> Execute duas vezes — um valor para cada chave.
+
+### Criar os diretórios necessários
+
+```bash
+# Diretório para nodes customizados (bind mount)
+mkdir -p ~/n8n-latest-pure/n8n/custom
+mkdir -o ~/n8n-latest-pure/shared
+
+# Corrigir permissão para o usuário 'node' do container (UID 1000)
+sudo chown -R 1000:1000 ~/n8n-latest-pure/n8n/custom
+
+# Diretório shared (já existe, mas garantir permissão)
+sudo chown -R 1000:1000 ~/n8n-latest-pure/shared
+```
+
+---
+
+## 7. Ajuste do docker-compose.yml
+
+Edite o `docker-compose.yml` para adicionar o bind mount do diretório `custom`:
+
+```bash
+nano ~/n8n-latest-pure/docker-compose.yml
+```
+
+Localize o serviço `n8n` e adicione a linha marcada abaixo na seção `volumes`:
+
+```yaml
+  n8n:
+    <<: *service-n8n
+    hostname: n8n
+    container_name: n8n
+    restart: unless-stopped
+    ports:
+      - "${N8N_PORT:-5678}:5678"
+    volumes:
+      - n8n_storage:/home/node/.n8n
+      - ./n8n/demo-data:/demo-data
+      - ./shared:/data/shared
+      - ./n8n/custom:/home/node/.n8n/custom    # ← ADICIONE ESTA LINHA
+    depends_on:
+      postgres:
+        condition: service_healthy
+      n8n-import:
+        condition: service_completed_successfully
+```
+
+Salve e feche (`Ctrl+O`, `Enter`, `Ctrl+X`).
+
+---
+
+## 8. Subir o n8n
+
+```bash
+cd ~/n8n-latest-pure
+docker compose up -d
+```
+
+### Verificar se está rodando
+
+```bash
+docker ps
+```
+
+Saída esperada:
+```
+CONTAINER ID   IMAGE                COMMAND       CREATED   STATUS          PORTS                    NAMES
+xxxxxxxxxxxx   n8nio/n8n:latest     "tini -- …"   ...       Up X minutes    0.0.0.0:5678->5678/tcp   n8n
+xxxxxxxxxxxx   postgres:16-alpine   "docker-…"    ...       Up X minutes    5432/tcp                 n8n-latest-pure-postgres-1
+```
+
+### Acessar a interface
+
+Abra no navegador: `http://IP_DA_SUA_VPS:5678`
+
+> **Dica de segurança:** Em produção, configure um reverse proxy (Nginx ou Caddy) com HTTPS. Não exponha a porta 5678 diretamente na internet sem autenticação.
+
+---
+
+## 9. Estrutura do repositório de nodes
+
+```
+n8n-nodes-starter-with-deploy/
+├── src/
+│   └── nodes/
+│       └── MeuNode/
+│           ├── MeuNode.node.ts       ← lógica do node
+│           └── meunode.svg           ← ícone
+├── dist/                             ← gerado pelo build
+├── package.json
+├── tsconfig.json
+└── deploy.sh                         ← script de deploy
+```
+
+### package.json — campos obrigatórios
+
+O n8n identifica nodes pelo campo `n8n` no `package.json`. Certifique-se que está assim:
+
+```json
+{
+  "name": "n8n-nodes-meu-node",
+  "version": "0.1.0",
+  "n8n": {
+    "n8nNodesApiVersion": 1,
+    "credentials": [],
+    "nodes": [
+      "dist/nodes/MeuNode/MeuNode.node.js"
+    ]
+  },
+  "scripts": {
+    "build": "tsc && npm run copy-icons",
+    "copy-icons": "copyfiles -u 1 'src/**/*.svg' dist/",
+    "dev": "tsc --watch"
+  }
+}
+```
+
+---
+
+## 10. O script deploy.sh
+
+O `deploy.sh` no repositório de nodes faz tudo automaticamente:
+1. Builda o TypeScript
+2. Copia os arquivos compilados para o diretório `custom` do n8n na VPS
+3. Reinicia o container n8n
+4. Exibe os logs
+
+### Conteúdo do deploy.sh
+
+```bash
+#!/bin/bash
+set -e
+
+# ─── Configuração ─────────────────────────────────────────────────────────────
+# Caminho absoluto para o diretório custom do n8n na VPS
+# Ajuste conforme seu ambiente
+N8N_CUSTOM_DIR="${N8N_CUSTOM_DIR:-/home/ubuntu/n8n-latest-pure/n8n/custom}"
+
+# ─── Verificações ─────────────────────────────────────────────────────────────
+echo "🔍 Verificando pnpm..."
+if ! command -v pnpm &> /dev/null; then
+    echo "pnpm não encontrado. Instalando..."
+    npm install -g pnpm
+fi
+
+PACKAGE_NAME=$(node -p "require('./package.json').name")
+[ -z "$PACKAGE_NAME" ] && echo "❌ Erro: nome do pacote não encontrado." && exit 1
+
+echo "📦 Pacote: $PACKAGE_NAME"
+echo "📁 Destino: $N8N_CUSTOM_DIR/$PACKAGE_NAME"
+
+# ─── Build ────────────────────────────────────────────────────────────────────
+echo ""
+echo "🔨 Buildando..."
+pnpm install
+pnpm run build
+
+# ─── Deploy ───────────────────────────────────────────────────────────────────
+echo ""
+echo "📤 Copiando para o diretório custom do n8n..."
+mkdir -p "$N8N_CUSTOM_DIR/$PACKAGE_NAME"
+cp -r dist/. "$N8N_CUSTOM_DIR/$PACKAGE_NAME/"
+cp package.json "$N8N_CUSTOM_DIR/$PACKAGE_NAME/"
+
+# ─── Restart ──────────────────────────────────────────────────────────────────
+echo ""
+echo "🔄 Reiniciando n8n..."
+docker restart n8n
+
+echo ""
+echo "✅ Deploy concluído!"
+echo ""
+echo "📋 Logs do n8n (Ctrl+C para sair)..."
+docker logs -f n8n
+```
+
+### Tornar executável
+
+```bash
+chmod +x deploy.sh
+```
+
+### Variável de ambiente N8N_CUSTOM_DIR
+
+O script usa `N8N_CUSTOM_DIR` para saber onde copiar os arquivos. Você pode:
+
+**Opção A — exportar no shell antes de rodar:**
+```bash
+export N8N_CUSTOM_DIR=/home/ubuntu/n8n-latest-pure/n8n/custom
+./deploy.sh
+```
+
+**Opção B — criar um `.env.local` no repo de nodes e carregar no script** (adicione no início do `deploy.sh`):
+```bash
+[ -f .env.local ] && source .env.local
+```
+
+E crie o `.env.local` (não commitar no git):
+```bash
+echo "N8N_CUSTOM_DIR=/home/ubuntu/n8n-latest-pure/n8n/custom" > .env.local
+echo ".env.local" >> .gitignore
+```
+
+---
+
+## 11. Fluxo de desenvolvimento
+
+### Primeira vez (setup completo na VPS)
+
+```bash
+# 1. Clonar o repositório de nodes na VPS
+cd ~
+git clone https://github.com/henrysssilveira/n8n-nodes-starter-with-deploy.git
+cd n8n-nodes-starter-with-deploy
+
+# 2. Configurar o caminho de destino
+echo "N8N_CUSTOM_DIR=/home/ubuntu/n8n-latest-pure/n8n/custom" > .env.local
+echo ".env.local" >> .gitignore
+
+# 3. Primeiro deploy
+./deploy.sh
+```
+
+### Ciclo de desenvolvimento do dia a dia
+
+```bash
+# 1. Editar o código do node
+nano src/nodes/MeuNode/MeuNode.node.ts
+
+# 2. Commitar (opcional, mas recomendado)
+git add . && git commit -m "feat: adiciona campo X"
+
+# 3. Fazer deploy
+./deploy.sh
+```
+
+O n8n vai reiniciar e carregar o node atualizado automaticamente.
+
+### Verificar se o node foi carregado
+
+Após o restart, procure nos logs:
+
+```bash
+docker logs n8n 2>&1 | grep -i "custom\|node\|loaded"
+```
+
+Ou acesse a interface do n8n → busque pelo nome do seu node na paleta de nodes.
+
+---
+
+## 12. Verificação e troubleshooting
+
+### Checar se o diretório custom está montado corretamente
+
+```bash
+docker exec -it n8n ls -la /home/node/.n8n/custom/
+```
+
+Você deve ver a pasta do seu pacote listada.
+
+### Checar o conteúdo do pacote dentro do container
+
+```bash
+docker exec -it n8n ls -la /home/node/.n8n/custom/n8n-nodes-meu-node/
+```
+
+Deve conter os arquivos `.js` compilados e o `package.json`.
+
+### Node não aparece na interface
+
+Verifique se o `package.json` dentro do `custom/` tem o campo `n8n` corretamente preenchido:
+
+```bash
+docker exec -it n8n cat /home/node/.n8n/custom/n8n-nodes-meu-node/package.json
+```
+
+### Erro de permissão ao copiar
+
+```bash
+# Reaplica a permissão correta
+sudo chown -R 1000:1000 ~/n8n-latest-pure/n8n/custom
+```
+
+### Logs detalhados do n8n
+
+```bash
+docker logs n8n --tail 100
+```
+
+### Reiniciar tudo do zero (sem perder dados)
+
+```bash
+cd ~/n8n-latest-pure
+docker compose restart n8n
+```
+
+### Reiniciar completamente (mantém volumes/dados)
+
+```bash
+cd ~/n8n-latest-pure
+docker compose down
+docker compose up -d
+```
+
+---
+
+## 📁 Estrutura final de diretórios na VPS
+
+```
+~/ (home do ubuntu)
+├── n8n-latest-pure/                  ← infraestrutura
+│   ├── .env                          ← variáveis de ambiente (não commitar)
+│   ├── docker-compose.yml
+│   ├── n8n/
+│   │   ├── custom/                   ← nodes compilados ficam aqui
+│   │   │   └── n8n-nodes-meu-node/   ← criado pelo deploy.sh
+│   │   │       ├── package.json
+│   │   │       └── nodes/
+│   │   │           └── MeuNode/
+│   │   │               └── MeuNode.node.js
+│   │   └── demo-data/
+│   └── shared/
+│
+└── n8n-nodes-starter-with-deploy/    ← código-fonte dos nodes
+    ├── src/
+    ├── dist/                         ← gerado pelo build
+    ├── package.json
+    ├── deploy.sh
+    └── .env.local                    ← caminho do custom (não commitar)
+```
+
+---
+
+## 🔒 Dicas de segurança para produção
+
+- Configure um domínio com HTTPS usando **Caddy** ou **Nginx + Certbot**
+- Não exponha a porta `5678` diretamente — use reverse proxy
+- Mantenha o `.env` fora do controle de versão (já está no `.gitignore`)
+- Use senhas fortes e únicas para `POSTGRES_PASSWORD` e `N8N_ENCRYPTION_KEY`
+- Habilite autenticação no n8n (`N8N_BASIC_AUTH_ACTIVE=true` ou configure usuários pela interface)
+
+---
