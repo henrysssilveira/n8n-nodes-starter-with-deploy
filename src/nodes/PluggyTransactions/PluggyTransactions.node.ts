@@ -16,17 +16,10 @@ export class PluggyTransactions implements INodeType {
 		group: ['transform'],
 		version: 1,
 		description: 'Lista transações financeiras de uma conta via Pluggy API (cursor-based pagination)',
-		defaults: {
-			name: 'Pluggy Transactions',
-		},
+		defaults: { name: 'Pluggy Transactions' },
 		inputs: ['main'],
 		outputs: ['main'],
-		credentials: [
-			{
-				name: 'pluggyApi',
-				required: true,
-			},
-		],
+		credentials: [{ name: 'pluggyApi', required: true }],
 		properties: [
 			{
 				displayName: 'Account ID',
@@ -51,11 +44,7 @@ export class PluggyTransactions implements INodeType {
 				default: '',
 				placeholder: 'MjAyMC0xMC0xNVQwMDow...',
 				description: 'Cursor para buscar a próxima página. Obtido do campo "next" da resposta anterior.',
-				displayOptions: {
-					show: {
-						fetchAllPages: [false],
-					},
-				},
+				displayOptions: { show: { fetchAllPages: [false] } },
 			},
 			{
 				displayName: 'Filtros',
@@ -105,6 +94,35 @@ export class PluggyTransactions implements INodeType {
 		const items = this.getInputData();
 		const allTransactions: INodeExecutionData[] = [];
 
+		// ── Auth — executa UMA vez para toda a execução do node ──────────────
+		const credentials = await this.getCredentials('pluggyApi');
+		const clientId = credentials.clientId as string;
+		const clientSecret = credentials.clientSecret as string;
+
+		if (!clientId || !clientSecret) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'Client ID e Client Secret são obrigatórios nas credenciais.',
+			);
+		}
+
+		let apiKey: string;
+		try {
+			const authResponse = await this.helpers.httpRequest({
+				method: 'POST',
+				url: 'https://api.pluggy.ai/auth',
+				body: { clientId, clientSecret },
+				json: true,
+			} as IHttpRequestOptions);
+			apiKey = authResponse.apiKey as string;
+		} catch (error) {
+			throw new NodeOperationError(
+				this.getNode(),
+				`Falha na autenticação com a Pluggy: ${(error as Error).message}`,
+			);
+		}
+		// ─────────────────────────────────────────────────────────────────────
+
 		for (let i = 0; i < items.length; i++) {
 			const accountId = this.getNodeParameter('accountId', i) as string;
 			const fetchAllPages = this.getNodeParameter('fetchAllPages', i) as boolean;
@@ -116,7 +134,11 @@ export class PluggyTransactions implements INodeType {
 			};
 
 			if (!accountId) {
-				throw new NodeOperationError(this.getNode(), 'Account ID é obrigatório.', { itemIndex: i });
+				throw new NodeOperationError(
+					this.getNode(),
+					'Account ID é obrigatório.',
+					{ itemIndex: i },
+				);
 			}
 
 			if (filters.dateFrom && filters.createdAtFrom) {
@@ -133,11 +155,7 @@ export class PluggyTransactions implements INodeType {
 			if (filters.dateTo) baseParams.dateTo = filters.dateTo;
 			if (filters.createdAtFrom) baseParams.createdAtFrom = filters.createdAtFrom;
 
-			const credentials = await this.getCredentials('pluggyApi');
-			const apiKey = credentials.apiKey as string;
-
 			let cursor: string | null = null;
-
 			if (!fetchAllPages) {
 				const manualCursor = this.getNodeParameter('after', i, '') as string;
 				if (manualCursor) cursor = manualCursor;
@@ -147,7 +165,7 @@ export class PluggyTransactions implements INodeType {
 				const qs: Record<string, string> = { ...baseParams };
 				if (cursor) qs.after = cursor;
 
-				const options: IHttpRequestOptions = {
+				const response = await this.helpers.httpRequest({
 					method: 'GET',
 					url: 'https://api.pluggy.ai/v2/transactions',
 					headers: {
@@ -156,11 +174,9 @@ export class PluggyTransactions implements INodeType {
 					},
 					qs,
 					json: true,
-				};
+				} as IHttpRequestOptions);
 
-				const response = await this.helpers.httpRequest(options);
 				const results: IDataObject[] = response.results ?? [];
-
 				for (const transaction of results) {
 					allTransactions.push({ json: transaction });
 				}
@@ -171,7 +187,6 @@ export class PluggyTransactions implements INodeType {
 				} else {
 					cursor = null;
 				}
-
 			} while (fetchAllPages && cursor !== null);
 		}
 
