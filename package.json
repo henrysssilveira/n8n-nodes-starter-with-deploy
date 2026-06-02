@@ -1,52 +1,44 @@
 {
-	"name": "n8n-nodes-<...>",
-	"version": "0.1.0",
-	"description": "",
-	"license": "MIT",
-	"homepage": "",
-	"keywords": [
-		"n8n-community-node-package"
-	],
-	"author": {
-		"name": "",
-		"email": ""
-	},
-	"repository": {
-		"type": "git",
-		"url": "https://github.com/<...>/n8n-nodes-<...>.git"
-	},
-	"scripts": {
-		"build": "n8n-node build",
-		"build:watch": "tsc --watch",
-		"dev": "n8n-node dev",
-		"lint": "n8n-node lint",
-		"lint:fix": "n8n-node lint --fix",
-		"release": "n8n-node release",
-		"prepublishOnly": "n8n-node prerelease"
-	},
-	"files": [
-		"dist"
-	],
-	"n8n": {
-		"n8nNodesApiVersion": 1,
-		"strict": true,
-		"credentials": [
-			"dist/credentials/GithubIssuesApi.credentials.js",
-			"dist/credentials/GithubIssuesOAuth2Api.credentials.js"
-		],
-		"nodes": [
-			"dist/nodes/GithubIssues/GithubIssues.node.js",
-			"dist/nodes/Example/Example.node.js"
-		]
-	},
-	"devDependencies": {
-		"@n8n/node-cli": "*",
-		"eslint": "9.39.4",
-		"prettier": "3.8.3",
-		"release-it": "20.0.1",
-		"typescript": "5.9.3"
-	},
-	"peerDependencies": {
-		"n8n-workflow": "*"
-	}
+  "name": "n8n-nodes-pluggy",
+  "version": "0.1.0",
+  "description": "n8n community node para a API da Pluggy — listagem de transações financeiras",
+  "keywords": [
+    "n8n-community-node-package",
+    "pluggy",
+    "finance",
+    "transactions",
+    "open-finance"
+  ],
+  "license": "MIT",
+  "homepage": "",
+  "author": {
+    "name": "Henrique Silveira"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/henrysssilveira/n8n-nodes-pluggy"
+  },
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc && npm run copy-icons",
+    "copy-icons": "copyfiles -u 1 \"src/**/*.svg\" dist/",
+    "dev": "tsc --watch",
+    "lint": "eslint nodes credentials --ext .ts",
+    "lintfix": "eslint nodes credentials --ext .ts --fix"
+  },
+  "n8n": {
+    "n8nNodesApiVersion": 1,
+    "credentials": [
+      "dist/credentials/PluggyApi.credentials.js"
+    ],
+    "nodes": [
+      "dist/nodes/PluggyTransactions/PluggyTransactions.node.js"
+    ]
+  },
+  "devDependencies": {
+    "@types/node": "^18.0.0",
+    "copyfiles": "^2.4.1",
+    "typescript": "^5.0.0",
+    "n8n-workflow": "*"
+  }
 }
